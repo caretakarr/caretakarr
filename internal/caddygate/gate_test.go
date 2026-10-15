@@ -88,11 +88,12 @@ func gateStore(t *testing.T) (*store.Store, int64, int64) {
 	return st, acl.ID, open.ID
 }
 
-// gateService wires a deterministic Service with a fake mailer.
+// gateService wires a deterministic Service with a fake mailer behind the settings source.
 func gateService(t *testing.T, st *store.Store) (*Service, *fakeMailer) {
 	t.Helper()
 	m := newFakeMailer()
-	s := New(st, m, "access@example.com", "e2e-secret-key-0123456789abcdef-e2e", 443)
+	s := New(st, func() (Mailer, string, bool) { return m, "access@example.com", true },
+		"e2e-secret-key-0123456789abcdef-e2e", 443)
 	s.now = nowUTC
 	return s, m
 }
@@ -327,7 +328,7 @@ func TestRateLimits(t *testing.T) {
 func TestSessionSecretDerivationStableAndRotating(t *testing.T) {
 	st, _, _ := gateStore(t)
 	ctx := context.Background()
-	s := New(st, nil, "a@b.c", "e2e-secret-key-0123456789abcdef-e2e", 443)
+	s := New(st, func() (Mailer, string, bool) { return nil, "", false }, "e2e-secret-key-0123456789abcdef-e2e", 443)
 	if err := st.UpsertIdentity(ctx, "a@b.c", "n1", sha256hex(s.sessionSecret("a@b.c", "n1")), nowStr, 24*time.Hour); err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +352,7 @@ func TestIssuanceRefusedWithoutConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := Handler{RouteID: acl, Host: "acl.example.com", Mode: "acl"}
-	s := New(st, nil, "", "", 443) // nothing configured
+	s := New(st, func() (Mailer, string, bool) { return nil, "", false }, "", 443) // nothing configured
 	s.now = nowUTC
 	w, reached := s.call(t, h, "POST", Prefix+"/request", "email="+aclEmail, nil, false, nextBody)
 	if reached {

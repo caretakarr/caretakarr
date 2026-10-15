@@ -38,7 +38,11 @@ var hints = map[string]string{
 	"secret_key":    "Authenticator codes are stored encrypted. Set CARETAKARR_SECRET_KEY (at least 32 characters, for example from openssl rand -hex 32) in .env and recreate the container to turn them on. Back it up with your data volume.",
 	"gate_mode":     "A magic link (sent by email, valid for 15 minutes and single-use) opens the site only after it is clicked. With the allowlist, only listed emails and @domain rules get a link; with any email, anyone with a working inbox can ask for one.",
 	"gate_acl":      "One rule per line: alice@example.com admits exactly that address; @contractor.example admits everyone at that domain. Rules are matched after lowering case; a session is shared between all gated sites that allow the address.",
-	"smtp_setup":    "Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and MAIL_FROM in .env and recreate the container. A gated site cannot send links until then.",
+	"smtp_host":     "The submission server your provider gives you, such as smtp.fastmail.com. Leave empty (with MAIL FROM) to stop sites from sending.",
+	"smtp_port":     "587 (STARTTLS submission) for most providers.",
+	"smtp_pass":     "Stored encrypted with CARETAKARR_SECRET_KEY and never shown again. Blank for relays that do not ask for one.",
+	"mail_from":     "The sender address on the magic-link emails, such as access@example.com. Must be allowed to send from your provider.",
+	"smtp_setup":    "Set the SMTP host and MAIL FROM under Settings. A password also needs CARETAKARR_SECRET_KEY in .env.",
 }
 
 // statusHelp explains every status word and what to do next. Keys are kind:state.
@@ -162,6 +166,9 @@ var helpSections = []helpSection{
 	{"access", "Limiting who can open a site", `
 <p>On a site's edit page you can limit it to certain networks (<strong>Allowed sources</strong>, for example <code>192.168.0.0/16</code> for your whole home network) and add a <strong>username and password</strong>. Everyone else gets an error. The password is stored only as a hash.</p>
 <p><strong>Magic-link access</strong> goes one step further: after the allowlist (if you use one), the site asks for an email address and sends a single-use link. Sessions last 30 days with an allowlist, 7 days with any email, sliding: activity extends them. Revoke one identity under <strong>Security</strong> and its access dies on every gated site at once.</p>`},
+	{"settings", "Settings: email delivery", `
+<p>Email delivery lives on <strong>Settings</strong> page: an <strong>SMTP host</strong> (usually port 587), optionally a <strong>user and password</strong>, and the <strong>MAIL FROM</strong> address the magic links are sent from. The password is stored encrypted; <code>CARETAKARR_SECRET_KEY</code> still comes from .env.</p>
+<p>Saving a host and MAIL FROM turns magic-link access on at once: gated sites send on their next request, no recreate needed. Clearing both stops it.</p>`},
 	{"troubleshooting", "Troubleshooting", ``}, // list is generated from errTable
 }
 

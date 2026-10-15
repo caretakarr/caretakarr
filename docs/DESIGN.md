@@ -554,22 +554,14 @@ Source: brainstorm of 2026-10-15, from the specs in `../caddy-access-gateway` (e
 | ACL edit | Inside the same `Mutate` tx: shrinking a route's ACL deletes identities whose last live grant was on this route (auto-revoke). Unchanged sessions never lose access for grant survives. |
 | Magic links | Opaque 256-bit token, URL path form `/_gate/verify/<token>`; only the SHA-256 stored with host, 15 min expiry, consumed atomically (`UPDATE ... SET consumed_at WHERE token_hash=? AND consumed_at IS NULL`, check rows affected) before the session is minted. Never logged. |
 | Enumeration | Identical "check your email" response whether or not the email has a grant. ACL lookup happens before sending; nothing in the response varies. |
-| Email | Generic SMTP via stdlib `net/smtp` (TLS): host, port, user, password, `MAIL FROM` all env-only (`SMTP_*`), so the operator-secrets rule holds. One app-wide setting shared by all gated routes. Sending failure = generic response anyway; a token row exists but no session was minted, and the request already counted against rate limits. |
+| Email | Generic SMTP via stdlib `net/smtp`, configured on the Settings page in SQLite (§18.2), password sealed with `secretbox`; the operator-secrets rule is updated accordingly. One app-wide setting shared by all gated routes. Sending failure = generic response anyway; a token row exists but no session was minted, and the request already counted against rate limits. |
 | Rate limits | In-memory, same shape as `authn`: per-IP request bucket (default 20/h), per-email (5/h), per-IP token attempts (30/h). Time-windowed, no permanent lockout. |
 | Fail closed | Store error in the gate handler → 503, never `next`. No session → portal or 403, never the upstream. |
 | Security | Cookie `caretakarr_gate`: HttpOnly, SameSite Lax (verify arrives via link from email), `Secure` when the request came in over TLS, host-scoped `Path=/`. No JS on gate pages, plain HTML forms; the gate's `POST /_gate/request` changes no state beyond an in-memory-counted token row, so no CSRF token (documented). html/template auto-escaping everywhere; `fail()`/plain-language errors per house rule. |
 | Non-goals | No logout link (revocation is the operator's, or let it slide), no per-token audit table (slog events only), no UI for editing ACLs outside the route form, no SMTP settings in SQLite. |
 
-### 18.2 Config (`internal/config`)
-| Env | Rule |
-|---|---|
-| `ACME_ISSUER` | Optional: `internal` switches the whole render to Caddy's internal CA (self-signed; offline setups and e2e). Unset = Let's Encrypt. |
-| `SMTP_HOST` | Hostname of the submission server. Empty = gate feature inert. |
-| `SMTP_PORT` | Default `587`. |
-| `SMTP_USER`, `SMTP_PASS` | Credentials for the submission server (`SMTP_PASS` is a secret: env-only). |
-| `MAIL_FROM` | Bare address (like `ACME_EMAIL`), validated the same way. |
-
-All optional. Creating or enabling a gated route with `SMTP_HOST`/`MAIL_FROM` or `CARETAKARR_SECRET_KEY` unset fails at the form with a help-text error naming the env vars; if the environment changes after a gated route exists, issuance fails closed (logged, plain refusal page) — config still loads, no crash loop.
+### 18.2 Config
+Email delivery is app state in SQLite, not env: a one-row `settings` table (migration 006) holds `smtp_host`, `smtp_port` (587 default), `smtp_user`, a `secretbox`-sealed `smtp_pass` (like TOTP seeds), `mail_from` and `updated_at`. It is edited on the new `/settings` page (full session required) with the standard help machinery; a blank password keeps the stored one, clearing host AND sender stops delivery. The gate's mailer reads the row per issuance (no Caddy involvement, no reload). Env that remains: `CARETAKARR_SECRET_KEY` (unchanged: still required for gated routes, sessions derive from it) and `ACME_ISSUER=internal` (offline/e2e switch). No `SMTP_*` env vars are read anymore.
 
 ### 18.3 Components
 ```mermaid

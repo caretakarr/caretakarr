@@ -1,0 +1,20 @@
+{{define "content"}}
+<h1>Settings {{helplink "settings"}}</h1>
+<article>
+<h2>Email delivery</h2>
+{{if .Data.MailReady}}<p>On. Magic-link sites send their links from here. {{hint "smtp_host"}}</p>
+{{else}}<p>Not set. Magic-link sites stay blocked until this works. {{hint "smtp_setup"}}</p>{{end}}
+<form hx-post="/settings/smtp" hx-target="#smtp-msg">
+<label>SMTP host <input name="smtp_host" value="{{.Data.Host}}" placeholder="smtp.example.com" autocomplete="off"></label>
+{{hint "smtp_host"}}
+<label>SMTP port <input name="smtp_port" value="{{.Data.Port}}" placeholder="587" inputmode="numeric"></label>
+<label>SMTP user (blank = relay asks for none) <input name="smtp_user" value="{{.Data.User}}" autocomplete="off"></label>
+<label>SMTP password {{if .Data.PassSet}}(set; leave blank to keep){{end}} <input type="password" name="smtp_pass" autocomplete="new-password" placeholder="{{if .Data.PassSet}}leave blank to keep{{end}}"></label>
+{{hint "smtp_pass"}}
+<label>MAIL FROM <input name="mail_from" value="{{.Data.From}}" placeholder="access@example.com" autocomplete="off"></label>
+{{hint "mail_from"}}
+<button type="submit">Save</button>
+</form>
+<p id="smtp-msg" role="alert"></p>
+</article>
+{{end}}

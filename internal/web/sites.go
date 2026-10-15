@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,14 +38,20 @@ type addSiteData struct {
 	ServerIP       string // where the A record will point; shown in the live preview
 	Docker         dockerPanel
 	Presets        []presets.Preset
+	MailOK         bool // email delivery works: show the magic-link fieldset active
 }
 
 // newSitePage supports prefill from the Docker panel via ?host=&port=.
 func (s *Server) newSitePage(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	port, _ := strconv.Atoi(q.Get("port"))
+	mail, merr := s.mailReady(r.Context())
+	if merr != nil {
+		slog.Error("gate mail settings", "error", merr)
+	}
 	s.render(w, "site", http.StatusOK, page{Title: "Add site", Data: addSiteData{
-		Hostname: q.Get("hostname"), Host: q.Get("host"), Port: port, ServerIP: s.deps.Cfg.HostIP, Docker: s.dockerPanel(r), Presets: presets.All}})
+		Hostname: q.Get("hostname"), Host: q.Get("host"), Port: port, ServerIP: s.deps.Cfg.HostIP,
+		Docker: s.dockerPanel(r), Presets: presets.All, MailOK: mail && s.deps.Cfg.SecretKey != ""}})
 }
 
 // addSite turns "oc.example.com -> 192.168.25.165:9200" into the managed domain (if new), the route and its A record.
@@ -109,6 +116,12 @@ func (s *Server) addSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	grants, err := s.parseGate(r.Context(), rt, v)
+	if err != nil {
+		failErr(w, err)
+		return
+	}
+
 	var created store.Route
 	err = s.deps.Apply.Mutate(r.Context(), func(tx *store.Store) error {
 		if managed != nil {
@@ -125,7 +138,10 @@ func (s *Server) addSite(w http.ResponseWriter, r *http.Request) {
 		}
 		var cerr error
 		created, cerr = tx.CreateRoute(r.Context(), rt)
-		return cerr
+		if cerr != nil {
+			return cerr
+		}
+		return tx.ReplaceGrants(r.Context(), created.ID, grants)
 	})
 	if err != nil {
 		failErr(w, err)

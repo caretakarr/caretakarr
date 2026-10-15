@@ -154,8 +154,12 @@ func (s *Server) routeFormPage(w http.ResponseWriter, r *http.Request, rt store.
 		t, _ := dnsTargetOf(r, s.deps.Store, rt)
 		confirm = deleteConfirm(t)
 	}
+	mail, merr := s.mailReady(r.Context())
+	if merr != nil {
+		slog.Error("gate mail settings", "error", merr)
+	}
 	form := routeForm{Route: rt, Edit: edit, Domains: ds, Presets: presets.All, DeleteConfirm: confirm,
-		MailOK: s.deps.Cfg.SMTPHost != "" && s.deps.Cfg.MailFrom != "" && s.deps.Cfg.SecretKey != ""}
+		MailOK: mail && s.deps.Cfg.SecretKey != ""}
 	if edit {
 		if gs, err := s.deps.Store.Grants(r.Context(), rt.ID); err == nil {
 			form.GateACL = gateACLText(gs)
@@ -223,7 +227,7 @@ func (s *Server) createRoute(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	grants, err := s.parseGate(rt, r.PostForm)
+	grants, err := s.parseGate(r.Context(), rt, r.PostForm)
 	if err != nil {
 		failErr(w, err)
 		return
@@ -264,7 +268,7 @@ func (s *Server) updateRoute(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	grants, err := s.parseGate(in, r.PostForm)
+	grants, err := s.parseGate(r.Context(), in, r.PostForm)
 	if err != nil {
 		failErr(w, err)
 		return

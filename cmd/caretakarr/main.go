@@ -30,6 +30,7 @@ import (
 	"github.com/caretakarr/caretakarr/internal/discovery"
 	"github.com/caretakarr/caretakarr/internal/dnssync"
 	"github.com/caretakarr/caretakarr/internal/probe"
+	"github.com/caretakarr/caretakarr/internal/secretbox"
 	"github.com/caretakarr/caretakarr/internal/smtpx"
 	"github.com/caretakarr/caretakarr/internal/store"
 	"github.com/caretakarr/caretakarr/internal/web"
@@ -74,10 +75,31 @@ func run() error {
 		issuer = caddycfg.Internal
 	}
 	// The gate module reads SQLite directly in the Caddy request path; without an installed
-	// service every gated route fails closed with 503, never open.
-	caddygate.Install(caddygate.New(st, smtpx.Dialer{
-		Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Pass: cfg.SMTPPass,
-	}, cfg.MailFrom, cfg.SecretKey, cfg.HTTPSPort))
+	// service every gated route fails closed with 503, never open. Mail comes from the settings
+	// row (the Settings page), with the password unsealed only at send time.
+	gate := caddygate.New(st, func() (caddygate.Mailer, string, bool) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		set, err := st.GetSettings(ctx)
+		if err != nil {
+			slog.Error("gate mail settings", "error", err)
+			return nil, "", false
+		}
+		if !set.MailReady() {
+			return nil, "", false
+		}
+		var pw string
+		if set.SMTPPass != nil {
+			b, err := secretbox.Open(cfg.SecretKey, set.SMTPPass)
+			if err != nil {
+				slog.Error("gate mail password", "error", err)
+				return nil, "", false
+			}
+			pw = string(b)
+		}
+		return smtpx.Dialer{Host: set.SMTPHost, Port: set.SMTPPort, User: set.SMTPUser, Pass: pw}, set.MailFrom, true
+	}, cfg.SecretKey, cfg.HTTPSPort)
+	caddygate.Install(gate)
 	svc := apply.New(st, caddycfg.Options{
 		UIHost: cfg.Host, UIUpstream: uiUpstream, Email: cfg.ACMEEmail, Staging: cfg.Staging,
 		HTTPPort: cfg.HTTPPort, HTTPSPort: cfg.HTTPSPort, StoragePath: filepath.Join(cfg.DataDir, "caddy"),

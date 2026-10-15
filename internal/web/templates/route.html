@@ -36,8 +36,9 @@
 {{hint "stream"}}
 <label>Upload limit (blank = no limit) <input name="max_body" value="{{size .Route.MaxBody}}" placeholder="2GB"></label>
 {{hint "max_body"}}
-{{if .MailOK}}<fieldset>
+<fieldset>
 <legend>Magic-link access (optional)</legend>
+{{if .MailOK}}
 <label>Require a magic link before the site is served?
 <select name="gate_mode">
 <option value=""{{if not .Route.GateMode}} selected{{end}}>No</option>
@@ -45,11 +46,15 @@
 <option value="open"{{if eq .Route.GateMode "open"}} selected{{end}}>Yes, but any email address</option>
 </select></label>
 {{hint "gate_mode"}}
-<label>Allowlist (one per line; empty addresses start with @ to cover a whole domain)
+<label>Allowlist (one per line; addresses starting with @ cover a whole domain)
 <textarea name="gate_acl" rows="3" placeholder="alice@example.com&#10;@contractor.example">{{.GateACL}}</textarea></label>
 {{hint "gate_acl"}}
+{{else}}
+<label>Require a magic link before the site is served?
+<span class="gate-note">Set up email delivery under <a href="/settings">Settings</a> first; the picker and allowlist unlock afterwards.</span></label>
+{{hint "smtp_setup"}}
+{{end}}
 </fieldset>
-{{else}}<p><small>Magic-link access needs email delivery set up first: {{hint "smtp_setup"}}</small></p>{{end}}
 <label>Allowed sources (CIDR ranges, one per line; empty = anyone)
 <textarea name="allowlist" rows="3" placeholder="192.168.0.0/16">{{.Route.Allowlist}}</textarea></label>
 {{hint "allowlist"}} {{helplink "access"}}

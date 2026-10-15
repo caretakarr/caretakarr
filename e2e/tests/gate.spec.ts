@@ -14,6 +14,14 @@ test('gated route: magic link in, revoke out', async ({ page }) => {
   await new Promise<void>((ok) => upstream.listen(29111, '127.0.0.1', ok));
 
   await login(page);
+
+  // Email delivery is configured in the UI now: point it at the SMTP sink before gating a site.
+  await page.goto('/settings');
+  await page.getByLabel('SMTP host', { exact: true }).fill('127.0.0.1');
+  await page.getByLabel('SMTP port').fill('28097');
+  await page.getByLabel('MAIL FROM', { exact: true }).fill('e2e@example.com');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('On. Magic-link sites send their links from here.')).toBeVisible();
   await page.goto('/domains');
   await page.getByLabel('Domain', { exact: true }).fill('gate.example.test');
   await page.getByLabel('Default IP').fill('192.168.1.19');
@@ -29,6 +37,16 @@ test('gated route: magic link in, revoke out', async ({ page }) => {
   await page.getByRole('button', { name: 'Add route' }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('row', { name: /st\.gate\.example\.test/ }).getByText('gated (any email)')).toBeVisible();
+
+  // The route form's magic-link section is visible unconfigured, too — but disabled there.
+  await page.goto('/domains');
+  await page.getByLabel('Domain', { exact: true }).fill('gate2.example.test');
+  await page.getByLabel('Default IP').fill('192.168.1.18');
+  await page.getByRole('button', { name: 'Add domain' }).click();
+  await expect(page.getByRole('cell', { name: 'gate2.example.test' })).toBeVisible();
+  await page.goto('/sites/new');
+  await expect(page.getByRole('button', { name: 'Add site' })).toBeVisible();
+  await expect(page.locator('fieldset', { has: page.getByText('Magic-link access (optional)') })).toBeVisible();
 
   // Unauthenticated: the portal answers on the route host, the app never sees the request.
   await page.goto(GATE);

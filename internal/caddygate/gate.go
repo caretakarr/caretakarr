@@ -38,6 +38,10 @@ type Mailer interface {
 	Send(from, to, subject, body string) error
 }
 
+// SettingsSource returns the current mail setup from app state; ok=false = cannot deliver
+// right now. Wired at boot: reads SQLite, opens the sealed password.
+type SettingsSource func() (Mailer, string, bool)
+
 func init() { caddy.RegisterModule(Handler{}) }
 
 // Handler is the Caddy module config. It carries the route's host, mode and id, so the
@@ -79,8 +83,7 @@ func Current() *Service {
 
 type Service struct {
 	st     *store.Store
-	mailer Mailer
-	from   string // MAIL_FROM
+	src    SettingsSource
 	secret string // CARETAKARR_SECRET_KEY; empty = issuance disabled, sessions still check
 	port   int    // HTTPS listen port; 443 = default, shown in magic links otherwise
 
@@ -89,8 +92,8 @@ type Service struct {
 }
 
 // New builds the service. All optional pieces degrade to refusing issuance, never to opening.
-func New(st *store.Store, mailer Mailer, from, secret string, port int) *Service {
-	return &Service{st: st, mailer: mailer, from: from, secret: secret, port: port, now: time.Now}
+func New(st *store.Store, src SettingsSource, secret string, port int) *Service {
+	return &Service{st: st, src: src, secret: secret, port: port, now: time.Now}
 }
 
 // Wrap turns a Handler config into a plain http.Handler for tests.
@@ -180,7 +183,13 @@ func (s *Service) request(w http.ResponseWriter, r *http.Request, h Handler) {
 			return
 		}
 	}
-	if s.mailer == nil || s.from == "" || s.secret == "" {
+	if s.secret == "" {
+		slog.Error("gate issuance refused: CARETAKARR_SECRET_KEY missing", "host", h.Host)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	mailer, from, ok := s.src()
+	if !ok {
 		slog.Error("gate issuance refused: mail not configured", "host", h.Host)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
@@ -191,12 +200,12 @@ func (s *Service) request(w http.ResponseWriter, r *http.Request, h Handler) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
-	go s.deliver(email, h.Host, raw)
+	go s.deliver(email, h.Host, raw, mailer, from)
 	s.page(w, pageData{Title: "Check your email", Heading: "Check your email"})
 }
 
 // deliver is detached: a slow SMTP server must not strand the token or stall the response.
-func (s *Service) deliver(email, host, token string) {
+func (s *Service) deliver(email, host, token string, mailer Mailer, from string) {
 	origin := "https://" + host
 	if s.port != 443 {
 		origin = fmt.Sprintf("%s:%d", origin, s.port)
@@ -205,7 +214,7 @@ func (s *Service) deliver(email, host, token string) {
 		origin + Prefix + "/verify/" + token + "\n\n" +
 		"It expires in 15 minutes and works once. If you did not ask for this, ignore it:\n" +
 		"forwarding the link would give away access."
-	if err := s.mailer.Send(s.from, email, "Access link for "+host, body); err != nil {
+	if err := mailer.Send(from, email, "Access link for "+host, body); err != nil {
 		slog.Error("gate mail send failed", "host", host, "error", err)
 		return
 	}

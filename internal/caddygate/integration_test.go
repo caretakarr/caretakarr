@@ -43,7 +43,8 @@ func TestGateBehindRealCaddy(t *testing.T) {
 	}
 	m := newFakeMailer()
 	httpsPort := caddytest.FreePort(t)
-	Install(New(st, m, "access@example.com", "gate-test-secret-0123456789abcdef-1", httpsPort))
+	Install(New(st, func() (Mailer, string, bool) { return m, "access@example.com", true },
+		"gate-test-secret-0123456789abcdef-1", httpsPort))
 	svc := apply.New(st, caddycfg.Options{UIHost: "caretakarr.example.test", UIUpstream: "127.0.0.1:1", Email: "me@example.test",
 		Issuer: caddycfg.Internal, HTTPPort: caddytest.FreePort(t), HTTPSPort: httpsPort, StoragePath: storage})
 	if err := svc.Start(context.Background()); err != nil {
