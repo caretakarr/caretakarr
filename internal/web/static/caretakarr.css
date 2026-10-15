@@ -125,12 +125,12 @@ body > header nav a:not(.brand):hover { color: var(--ct-brand-cyan); }
 .login-box { max-width: 26rem; margin-inline: auto; }
 
 /* ---- Cards, tables, forms -------------------------------------------------------------------- */
-article { border: 1px solid var(--ct-border); border-radius: var(--ct-radius-lg); box-shadow: var(--ct-shadow-panel); overflow-x: auto; }
+article { border: 1px solid var(--ct-border); border-radius: var(--ct-radius-lg); box-shadow: var(--ct-shadow-panel); }
 article > header { background: var(--ct-surface-raised); border-bottom: 1px solid var(--ct-border); color: var(--ct-text-secondary); font-weight: 600; }
 article > h2:first-child, article > h1:first-child { margin-top: 0; }
 article:has(> table, > #routes) { padding-inline: 0.5rem; }
-article table { min-width: 44rem; margin-bottom: 0; } /* scrolls inside the card on narrow screens instead of crushing columns */
-article th, article td { padding: 0.55rem 0.6rem; }
+article table { width: 100%; margin-bottom: 0; } /* columns squeeze and wrap on narrow screens; no card scrollbar anywhere */
+article th, article td { padding: 0.55rem 0.6rem; overflow-wrap: anywhere; }
 article td:first-child { overflow-wrap: anywhere; }
 article td:last-child { white-space: nowrap; }
 article td:last-child a:not(.icon-btn) { display: block; margin-bottom: 0.3rem; }
