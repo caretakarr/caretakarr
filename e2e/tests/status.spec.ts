@@ -13,8 +13,8 @@ test('status badges render for upstream, certificate and DNS', async ({ page }) 
   await page.goto('/routes/new');
   await page.locator('select[name=domain_id]').selectOption('status.example.net');
   await page.getByLabel('Subdomain').fill('self');
-  await page.getByLabel('Upstream host or IP').fill('127.0.0.1');
-  await page.getByLabel('Upstream port').fill('28081');
+  await page.getByLabel('Backend host or IP').fill('127.0.0.1');
+  await page.getByLabel('Backend port').fill('28081');
   await page.getByRole('button', { name: 'Add route' }).click();
 
   const row = page.getByRole('row', { name: /self\.status\.example\.net/ });

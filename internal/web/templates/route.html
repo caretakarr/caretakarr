@@ -1,82 +1,102 @@
 {{define "content"}}
 {{with .Data}}
-<h1>{{if .Edit}}Edit route{{else}}New route{{end}} {{helplink "sites"}}</h1>
+{{if .Edit}}<h1>Edit {{.Host}} {{helplink "sites"}}{{if .Cert.State}} {{$c := status "cert" .Cert.State}}<span class="cert-{{.Cert.State}}" title="{{$c.Meaning}}">{{.Cert.State}}{{if .CertSoon}}<small class="next">renewal due</small>{{end}}</span>
+<small class="cert-expire">expires {{.Cert.NotAfter.Format "2006-01-02"}}</small>{{end}}{{$d := status "dns" .DNS.State}}<span class="dns-{{.DNS.State}}" title="{{$d.Meaning}}">{{.DNS.State}}</span>
+<small class="up-{{.Upstream}}" title="{{(status "up" .Upstream).Meaning}}">{{.Upstream}}</small></h1>
+{{else}}<h1>New route {{helplink "sites"}}</h1>{{end}}
 {{if not .Domains}}<p>No domains yet. <a href="/sites/new">Add a site</a>: its domain is added for you.</p>{{else}}
 <article>
 {{template "docker" .Docker}}
 <form {{if .Edit}}hx-put="/routes/{{.Route.ID}}"{{else}}hx-post="/routes"{{end}} hx-target="#msg">
+<fieldset id="name"><legend>Address</legend>
+<div class="grid">
+<label>Domain
+<select name="domain_id" required aria-describedby="hint-domain">
+{{range .Domains}}<option value="{{.ID}}"{{if eq .ID $.Data.Route.DomainID}} selected{{end}}>{{.Name}}</option>{{end}}
+</select></label>
+<label>Subdomain <input name="subdomain" id="subdomain" value="{{.Route.Subdomain}}" placeholder="sonarr" required aria-describedby="hint-subdomain"></label>
+</div>
+{{hint "domain"}} {{hint "subdomain"}}
+</fieldset>
+{{if .Edit}}<p id="rename" class="banner warn" hidden></p>{{end}}
+<fieldset id="backend"><legend>Backend: where Caddy forwards requests {{helplink "sites"}}</legend>
 <label>Preset
-<select name="preset" id="preset">
+<select name="preset" id="preset" aria-describedby="hint-preset">
 <option value="">Custom</option>
 {{range .Presets}}<option value="{{.Name}}" data-sub="{{.Subdomain}}" data-port="{{.Port}}"{{if eq .Name $.Data.Route.Preset}} selected{{end}}>{{.Name}} ({{.Port}})</option>{{end}}
 </select></label>
 {{hint "preset"}}
-<label>Domain
-<select name="domain_id" required>
-{{range .Domains}}<option value="{{.ID}}"{{if eq .ID $.Data.Route.DomainID}} selected{{end}}>{{.Name}}</option>{{end}}
-</select></label>
-{{hint "domain"}}
-<label>Subdomain <input name="subdomain" id="subdomain" value="{{.Route.Subdomain}}" placeholder="sonarr" required></label>
-{{hint "subdomain"}}
-<label>Upstream scheme
-<select name="scheme">
+<div class="grid">
+<label>Scheme
+<select name="scheme" aria-describedby="hint-scheme">
 <option value="http"{{if eq .Route.Scheme "http"}} selected{{end}}>http</option>
 <option value="https"{{if eq .Route.Scheme "https"}} selected{{end}}>https</option>
 </select></label>
-{{hint "scheme"}}
-<label>Upstream host or IP <input name="upstream_host" value="{{.Route.UpstreamHost}}" placeholder="192.168.1.20" required></label>
-{{hint "upstream_host"}}
-<label>Upstream port <input name="upstream_port" id="upstream_port" type="number" min="1" max="65535" value="{{if .Route.UpstreamPort}}{{.Route.UpstreamPort}}{{end}}" required></label>
-{{hint "upstream_port"}}
-<label>DNS record IP (blank = the domain's default IP) <input name="record_ip" value="{{.Route.RecordIP}}" placeholder="192.168.1.20"></label>
-{{hint "record_ip"}} {{helplink "lan-only"}}
-<label><input type="checkbox" name="tls_skip_verify"{{if .Route.TLSSkipVerify}} checked{{end}}> Skip TLS verification (self-signed https upstream)</label>
-{{hint "skip_verify"}}
-<label><input type="checkbox" name="stream"{{if .Route.Stream}} checked{{end}}> Send responses as they arrive (streaming)</label>
-{{hint "stream"}}
-<label>Upload limit (blank = no limit) <input name="max_body" value="{{size .Route.MaxBody}}" placeholder="2GB"></label>
-{{hint "max_body"}}
-<fieldset>
-<legend>Magic-link access (optional)</legend>
+<label>Backend host or IP <input name="upstream_host" value="{{.Route.UpstreamHost}}" placeholder="192.168.1.20" required aria-describedby="hint-upstream_host"></label>
+<label>Backend port <input name="upstream_port" id="upstream_port" type="number" min="1" max="65535" value="{{if .Route.UpstreamPort}}{{.Route.UpstreamPort}}{{end}}" required aria-describedby="hint-upstream_port"></label>
+</div>
+{{hint "scheme"}} {{hint "upstream_host"}} {{hint "upstream_port"}}
+</fieldset>
+<fieldset id="access"><legend>Who can open this site {{helplink "access"}}</legend>
 {{if .MailOK}}
 <label>Require a magic link before the site is served?
-<select name="gate_mode">
+<select name="gate_mode" aria-describedby="hint-gate_mode">
 <option value=""{{if not .Route.GateMode}} selected{{end}}>No</option>
 <option value="acl"{{if eq .Route.GateMode "acl"}} selected{{end}}>Yes, with an allowlist</option>
 <option value="open"{{if eq .Route.GateMode "open"}} selected{{end}}>Yes, but any email address</option>
 </select></label>
 {{hint "gate_mode"}}
 <label>Allowlist (one per line; addresses starting with @ cover a whole domain)
-<textarea name="gate_acl" rows="3" placeholder="alice@example.com&#10;@contractor.example">{{.GateACL}}</textarea></label>
+<textarea name="gate_acl" rows="3" placeholder="alice@example.com&#10;@contractor.example" aria-describedby="hint-gate_acl">{{.GateACL}}</textarea></label>
 {{hint "gate_acl"}}
 {{else}}
-<label>Require a magic link before the site is served?
-<span class="gate-note">Set up email delivery under <a href="/settings">Settings</a> first; the picker and allowlist unlock afterwards.</span></label>
+<p>Require a magic link before the site is served? Set up email delivery under <a href="/settings">Settings</a> first; the picker and allowlist unlock afterwards.</p>
 {{hint "smtp_setup"}}
 {{end}}
-</fieldset>
 <label>Allowed sources (CIDR ranges, one per line; empty = anyone)
-<textarea name="allowlist" rows="3" placeholder="192.168.0.0/16">{{.Route.Allowlist}}</textarea></label>
-{{hint "allowlist"}} {{helplink "access"}}
-<fieldset>
-<legend>Basic authentication (optional)</legend>
-<label>User <input name="basic_user" value="{{.Route.BasicUser}}" autocomplete="off"></label>
+<textarea name="allowlist" rows="3" placeholder="192.168.0.0/16" aria-describedby="hint-allowlist">{{.Route.Allowlist}}</textarea></label>
+{{hint "allowlist"}} {{helplink "lan-only"}}
+<label>User <input name="basic_user" value="{{.Route.BasicUser}}" autocomplete="off" aria-describedby="hint-basic_auth"></label>
 <label>Password <input type="password" name="basic_password" autocomplete="new-password" placeholder="{{if .Route.BasicHash}}leave blank to keep the current password{{end}}"></label>
 {{hint "basic_auth"}}
 </fieldset>
-<label><input type="checkbox" name="enabled"{{if .Route.Enabled}} checked{{end}}> Enabled</label>
+<details id="advanced" class="docker"><summary>Advanced: DNS, certificates and tuning</summary>
+<div>
+<label>Upload limit (blank = no limit) <input name="max_body" value="{{size .Route.MaxBody}}" placeholder="2GB" aria-describedby="hint-max_body"></label>
+{{hint "max_body"}}
+<label><input type="checkbox" name="stream"{{if .Route.Stream}} checked{{end}}> Send responses as they arrive (streaming) <span></span></label>
+{{hint "stream"}}
+<label>DNS record IP (blank = the domain's default IP) <input name="record_ip" value="{{.Route.RecordIP}}" placeholder="192.168.1.20" aria-describedby="hint-record_ip"></label>
+{{hint "record_ip"}}
+<label><input type="checkbox" name="tls_skip_verify"{{if .Route.TLSSkipVerify}} checked{{end}}> Skip TLS verification (self-signed https backend)</label>
+{{hint "skip_verify"}}
+</div>
+</details>
+<label><input type="checkbox" name="enabled"{{if .Route.Enabled}} checked{{end}}> Enabled: the site is served while this is on</label>
 {{hint "enabled"}}
+{{hint "apply"}}
 <button type="submit">{{if .Edit}}Save{{else}}Add route{{end}}</button>
 <p id="msg" role="alert"></p>
 </form>
-{{if .Edit}}<button class="outline danger" hx-delete="/routes/{{.Route.ID}}?delete_dns=on" hx-target="#msg" hx-confirm="{{.DeleteConfirm}}">Delete route</button>{{end}}
+{{template "deletedlg" .}}
+{{if .Edit}}<button class="outline danger delete-route" data-id="{{.Route.ID}}" data-host="{{.Host}}"{{if .OwnsRecord}} data-dns-ip="{{.DNS.Content}}"{{end}} aria-label="Delete route">Delete route</button>{{end}}
 <script>
-document.getElementById('preset').addEventListener('change', function (e) {
+var $ = function (id) { return document.getElementById(id); };
+$('preset').addEventListener('change', function (e) {
   var o = e.target.selectedOptions[0];
   if (!o.value) return;
-  document.getElementById('subdomain').value = o.dataset.sub;
-  document.getElementById('upstream_port').value = o.dataset.port;
+  if (!document.querySelector('input[name=subdomain]').value) document.querySelector('input[name=subdomain]').value = o.dataset.sub;
+  $('upstream_port').value = o.dataset.port;
 });
+{{if .Edit}}
+var h0 = $('subdomain').value, host0 = {{.Host}};
+$('subdomain').addEventListener('input', function (e) {
+  var n = e.target.value.trim();
+  var r = $('rename');
+  if (n && n !== h0) { r.hidden = false; r.textContent = 'Renaming this site: ' + host0 + ' becomes ' + n + '.' + {{.DomainName}} + ' on save; the old DNS record is retired.'; }
+  else r.hidden = true;
+});
+{{end}}
 </script>
 </article>
 {{end}}

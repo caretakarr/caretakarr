@@ -31,8 +31,8 @@ test('gated route: magic link in, revoke out', async ({ page }) => {
   await page.goto('/routes/new');
   await page.locator('select[name=domain_id]').selectOption('gate.example.test');
   await page.getByLabel('Subdomain').fill('st');
-  await page.getByLabel('Upstream host or IP').fill('127.0.0.1');
-  await page.getByLabel('Upstream port').fill('29111');
+  await page.getByLabel('Backend host or IP').fill('127.0.0.1');
+  await page.getByLabel('Backend port').fill('29111');
   await page.locator('select[name=gate_mode]').selectOption('open');
   await page.getByRole('button', { name: 'Add route' }).click();
   await expect(page).toHaveURL(/\/$/);

@@ -69,7 +69,7 @@ func (s *Server) takeFlashes() []string {
 func New(d Deps) *Server {
 	s := &Server{deps: d, pages: map[string]*template.Template{}, auth: newAuthn(d.Cfg.AdminPassword)}
 	for _, p := range []string{"dashboard", "login", "login_totp", "security", "settings", "domains", "route", "site", "logs", "help"} {
-		s.pages[p] = template.Must(template.New(p).Funcs(helpFuncs).ParseFS(assets, "templates/layout.html", "templates/docker.html", "templates/"+p+".html"))
+		s.pages[p] = template.Must(template.New(p).Funcs(helpFuncs).ParseFS(assets, "templates/layout.html", "templates/docker.html", "templates/deletedlg.html", "templates/"+p+".html"))
 	}
 	if d.Apply != nil {
 		s.startupErr = d.Apply.StartupError

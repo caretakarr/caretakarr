@@ -7,7 +7,8 @@
 <form hx-post="/settings/smtp" hx-target="#smtp-msg">
 <label>SMTP host <input name="smtp_host" value="{{.Data.Host}}" placeholder="smtp.example.com" autocomplete="off"></label>
 {{hint "smtp_host"}}
-<label>SMTP port <input name="smtp_port" value="{{.Data.Port}}" placeholder="587" inputmode="numeric"></label>
+<label>SMTP port <input name="smtp_port" value="{{.Data.Port}}" placeholder="587" type="number" min="1" max="65535" aria-describedby="hint-smtp_port"></label>
+{{hint "smtp_port"}}
 <label>SMTP user (blank = relay asks for none) <input name="smtp_user" value="{{.Data.User}}" autocomplete="off"></label>
 <label>SMTP password {{if .Data.PassSet}}(set; leave blank to keep){{end}} <input type="password" name="smtp_pass" autocomplete="new-password" placeholder="{{if .Data.PassSet}}leave blank to keep{{end}}"></label>
 {{hint "smtp_pass"}}

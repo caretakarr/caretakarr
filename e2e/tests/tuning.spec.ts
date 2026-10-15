@@ -12,8 +12,9 @@ test('streaming and upload limit: set, badge, edit, reject bad size', async ({ p
   await page.goto('/routes/new');
   await page.locator('select[name=domain_id]').selectOption('tuning.example.net');
   await page.getByLabel('Subdomain').fill('term');
-  await page.getByLabel('Upstream host or IP').fill('192.168.1.23');
-  await page.getByLabel('Upstream port').fill('8788');
+  await page.getByLabel('Backend host or IP').fill('192.168.1.23');
+  await page.getByLabel('Backend port').fill('8788');
+  await page.locator('#advanced summary').click(); // tuning controls live in the collapsed Advanced block
   await page.getByLabel('Send responses as they arrive').check();
   await page.getByLabel('Upload limit').fill('2GB');
   await page.getByRole('button', { name: 'Add route' }).click();
@@ -23,6 +24,7 @@ test('streaming and upload limit: set, badge, edit, reject bad size', async ({ p
   await expect(row.getByText('max 2GB')).toBeVisible();
 
   await row.getByRole('link', { name: 'Edit' }).click();
+  await page.locator('#advanced summary').click();
   await expect(page.getByLabel('Send responses as they arrive')).toBeChecked();
   await expect(page.getByLabel('Upload limit')).toHaveValue('2GB');
   await page.getByLabel('Upload limit').fill('500GB');

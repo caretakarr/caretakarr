@@ -20,8 +20,8 @@ test('a route named like the UI host is rejected', async ({ page }) => {
   await page.goto('/routes/new');
   await page.locator('select[name=domain_id]').selectOption('example.com');
   await page.getByLabel('Subdomain').fill('caretakarr');
-  await page.getByLabel('Upstream host or IP').fill('192.168.1.20');
-  await page.getByLabel('Upstream port').fill('8080');
+  await page.getByLabel('Backend host or IP').fill('192.168.1.20');
+  await page.getByLabel('Backend port').fill('8080');
   await page.getByRole('button', { name: 'Add route' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'Caretakarr UI host' })).toBeVisible();
 });

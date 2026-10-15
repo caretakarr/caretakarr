@@ -95,11 +95,11 @@ func TestConflictAndTakeOver(t *testing.T) {
 }
 
 func TestDeleteConfirmationAndRecordHandling(t *testing.T) {
-	// owned: confirmation says the record is deleted, and it is
+	// owned: the dialog button knows the record and offers to delete it, and it is
 	s, cf, d := newDNSServer(t)
 	r := addRoute(t, s, d)
-	if body := s.do(req{path: "/routes/" + itoa(r.ID)}).Body.String(); !strings.Contains(body, "also deletes the A record sonarr.example.com") {
-		t.Errorf("owned confirmation: %s", body)
+	if body := s.do(req{path: "/routes/" + itoa(r.ID)}).Body.String(); !strings.Contains(body, `data-dns-ip="10.0.0.1"`) {
+		t.Errorf("owned record: dialog data missing: %s", body)
 	}
 	if w := s.do(req{method: "DELETE", path: "/routes/" + itoa(r.ID) + "?delete_dns=on", hdr: htmxPost}); w.Code != 204 {
 		t.Fatal(w.Code)
@@ -108,12 +108,12 @@ func TestDeleteConfirmationAndRecordHandling(t *testing.T) {
 		t.Error("owned record not deleted")
 	}
 
-	// adopted: confirmation says left in place, and it is
+	// adopted: no dns data on the button; the dialog explains the record is left in place
 	s, cf, d = newDNSServer(t)
 	cf.dns.Seed("sonarr.example.com", "10.0.0.1")
 	r = addRoute(t, s, d)
-	if body := s.do(req{path: "/routes/" + itoa(r.ID)}).Body.String(); !strings.Contains(body, "left in place") {
-		t.Errorf("adopted confirmation: %s", body)
+	if body := s.do(req{path: "/routes/" + itoa(r.ID)}).Body.String(); strings.Contains(body, `data-dns-ip=`) {
+		t.Errorf("adopted record offered for deletion: %s", body)
 	}
 	s.do(req{method: "DELETE", path: "/routes/" + itoa(r.ID), hdr: htmxPost})
 	if len(cf.dns.Records()) != 1 {
@@ -140,7 +140,7 @@ func TestRenameMovesRecord(t *testing.T) {
 	s, cf, d := newDNSServer(t)
 	r := addRoute(t, s, d)
 	e := form("domain_id", itoa(d.ID), "subdomain", "tv", "enabled", "on")
-	if w := s.do(req{method: "PUT", path: "/routes/" + itoa(r.ID), body: e.Encode(), hdr: htmxPost}); w.Code != 204 {
+	if w := s.do(req{method: "PUT", path: "/routes/" + itoa(r.ID), body: e.Encode(), hdr: htmxPost}); w.Code != 200 {
 		t.Fatalf("%d %q", w.Code, w.Body.String())
 	}
 	recs := cf.dns.Records()
@@ -194,8 +194,8 @@ func TestListRowDeletePanel(t *testing.T) {
 	s, cf, d := newDNSServer(t)
 	cf.dns.Seed("sonarr.example.com", "10.0.0.1")
 	addRoute(t, s, d)
-	if body = s.do(req{path: "/"}).Body.String(); !strings.Contains(body, `data-dns-ip=""`) {
-		t.Errorf("adopted row must carry no DNS ip:\n%s", body)
+	if body = s.do(req{path: "/"}).Body.String(); strings.Contains(body, "data-dns-ip") {
+		t.Errorf("adopted row must not offer the record for deletion:\n%s", body)
 	}
 }
 

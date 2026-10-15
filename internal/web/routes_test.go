@@ -131,7 +131,7 @@ func TestRouteLifecycle(t *testing.T) {
 
 	// edit (domain and subdomain stay; upstream changes; checkbox unchecked disables)
 	e := form("domain_id", itoa(d.ID), "upstream_host", "10.1.1.1", "upstream_port", "9000")
-	if w := s.do(req{method: "PUT", path: "/routes/" + id, body: e.Encode(), hdr: htmxPost}); w.Code != 204 {
+	if w := s.do(req{method: "PUT", path: "/routes/" + id, body: e.Encode(), hdr: htmxPost}); w.Code != 200 {
 		t.Fatalf("update: %d %q", w.Code, w.Body.String())
 	}
 	got, _ := s.deps.Store.GetRoute(ctx, rs[0].ID)

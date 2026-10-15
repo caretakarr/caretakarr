@@ -70,10 +70,10 @@ func TestRouteFormShowsGateSection(t *testing.T) {
 	}
 	c := sessionCookie(t, login(s, "pw", nil, ""))
 	w := s.do(req{path: "/routes/new", cookies: []*http.Cookie{c}})
-	if !strings.Contains(w.Body.String(), "gate_mode") || !strings.Contains(w.Body.String(), "Magic-link access") {
+	if !strings.Contains(w.Body.String(), "gate_mode") || !strings.Contains(w.Body.String(), "Who can open this site") {
 		t.Fatalf("gate section missing from the route form:\n%s", w.Body.String())
 	}
-	// Mail unconfigured: the section stays visible but disabled, with the note.
+	// Mail unconfigured: the access section stays visible, with the settings pointer replacing the controls.
 	s2 := cfgServer(t, &cfFake{zones: zonesOK}, config.Config{AdminPassword: "pw"})
 	if _, err := s2.deps.Store.CreateDomain(context.Background(), store.Domain{Name: "gateui2.example.net", DefaultIP: "192.168.1.6", CertMode: "wildcard"}); err != nil {
 		t.Fatal(err)
@@ -83,8 +83,8 @@ func TestRouteFormShowsGateSection(t *testing.T) {
 	if strings.Contains(w2.Body.String(), "gate_mode") {
 		t.Fatal("controls rendered while mail is unconfigured")
 	}
-	if !strings.Contains(w2.Body.String(), "unlock afterwards") {
-		t.Fatalf("disabled note missing: %s", w2.Body.String())
+	if !strings.Contains(w2.Body.String(), "Set up email delivery under") {
+		t.Fatalf("settings pointer missing: %s", w2.Body.String())
 	}
 }
 

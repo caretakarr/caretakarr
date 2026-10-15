@@ -12,7 +12,7 @@ test('list row delete panel: cancel keeps the route, delete asks about the DNS r
   await page.goto('/routes/new');
   await page.locator('select[name=domain_id]').selectOption('delrow.example.net');
   await page.getByLabel('Preset').selectOption('Lidarr');
-  await page.getByLabel('Upstream host or IP').fill('192.168.1.24');
+  await page.getByLabel('Backend host or IP').fill('192.168.1.24');
   await page.getByRole('button', { name: 'Add route' }).click();
   const row = page.getByRole('row', { name: /lidarr\.delrow\.example\.net/ });
   await expect(row.getByText('synced')).toBeVisible();
@@ -44,7 +44,7 @@ test('row actions share one line and show a tooltip', async ({ page }) => {
   await page.goto('/routes/new');
   await page.locator('select[name=domain_id]').selectOption('icons.example.net');
   await page.getByLabel('Preset').selectOption('Readarr');
-  await page.getByLabel('Upstream host or IP').fill('192.168.1.25');
+  await page.getByLabel('Backend host or IP').fill('192.168.1.25');
   await page.getByRole('button', { name: 'Add route' }).click();
   const row = page.getByRole('row', { name: /readarr\.icons\.example\.net/ });
 

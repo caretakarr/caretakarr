@@ -95,7 +95,7 @@ func TestControlsEndToEndInHandlers(t *testing.T) {
 
 	// editing other fields with a blank password field keeps auth
 	e := form("domain_id", itoa(d.ID), "enabled", "on", "allowlist", "192.168.0.0/16", "basic_user", "alice", "upstream_port", "9999")
-	if w := s.do(req{method: "PUT", path: "/routes/" + itoa(r.ID), body: e.Encode(), hdr: htmxPost}); w.Code != 204 {
+	if w := s.do(req{method: "PUT", path: "/routes/" + itoa(r.ID), body: e.Encode(), hdr: htmxPost}); w.Code != 200 {
 		t.Fatalf("%d %q", w.Code, w.Body.String())
 	}
 	if after, _ := s.deps.Store.GetRoute(ctx, r.ID); after.BasicHash != got.BasicHash || after.UpstreamPort != 9999 {

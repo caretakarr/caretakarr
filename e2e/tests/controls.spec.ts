@@ -12,7 +12,7 @@ test('toggle a route and edit allowlist and basic auth', async ({ page }) => {
   await page.goto('/routes/new');
   await page.locator('select[name=domain_id]').selectOption('controls.example.net');
   await page.getByLabel('Preset').selectOption('Bazarr');
-  await page.getByLabel('Upstream host or IP').fill('192.168.1.22');
+  await page.getByLabel('Backend host or IP').fill('192.168.1.22');
   await page.getByLabel('Allowed sources').fill('192.168.0.0/16');
   await page.getByLabel('User', { exact: true }).fill('alice');
   await page.getByLabel('Password').fill('s3cret');

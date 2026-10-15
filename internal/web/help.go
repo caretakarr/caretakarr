@@ -43,6 +43,7 @@ var hints = map[string]string{
 	"smtp_pass":     "Stored encrypted with CARETAKARR_SECRET_KEY and never shown again. Blank for relays that do not ask for one.",
 	"mail_from":     "The sender address on the magic-link emails, such as access@example.com. Must be allowed to send from your provider.",
 	"smtp_setup":    "Set the SMTP host and MAIL FROM under Settings. A password also needs CARETAKARR_SECRET_KEY in .env.",
+	"apply":         "Saving applies the change at once: Caddy validates it before acceptance, so a rejection takes nothing down.",
 }
 
 // statusHelp explains every status word and what to do next. Keys are kind:state.

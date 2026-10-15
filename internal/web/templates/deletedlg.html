@@ -1,0 +1,36 @@
+{{define "deletedlg"}}{{/* The delete-site dialog + its wiring, shared by the dashboard rows and the Edit form.
+     A .delete-route button anywhere on the page opens it: data-id, data-host, data-dns-ip. */}}
+<dialog id="delete-dialog">
+<article>
+<h3>Delete <span class="dlg-host"></span>?</h3>
+<p>The site stops being served and the route is removed. This cannot be undone.</p>
+<form hx-delete="/routes/0" hx-target="find .dlg-msg">
+<label class="dlg-owned" hidden><input type="checkbox" name="delete_dns"> Also delete the DNS record <span class="dlg-record"></span> in Cloudflare</label>
+<p class="dlg-kept" hidden>The DNS record is left in place: Caretakarr did not create it, or there is none.</p>
+<p class="dlg-msg" role="alert"></p>
+<footer>
+<button type="button" class="outline secondary" onclick="document.getElementById('delete-dialog').close()">Cancel</button>
+<button type="submit" class="danger">Delete</button>
+</footer>
+</form>
+</article>
+</dialog>
+<script>
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('.delete-route');
+  if (!b) return; // dashboard icon buttons and the Edit form's text button share one wiring
+  var d = document.getElementById('delete-dialog'), f = d.querySelector('form'), ip = b.dataset.dnsIp;
+  if (!d) return;
+  f.setAttribute('hx-delete', '/routes/' + b.dataset.id);
+  htmx.process(f); // htmx captures the URL when it binds the form, so re-bind after changing it
+  f.reset();
+  d.querySelector('.dlg-host').textContent = b.dataset.host;
+  if (ip) {
+    d.querySelector('.dlg-record').textContent = 'The A record ' + b.dataset.host + ' (' + ip + ') belongs to this site.';
+  }
+  d.querySelector('.dlg-owned').hidden = !ip;
+  d.querySelector('.dlg-kept').hidden = !!ip;
+  d.querySelector('.dlg-msg').textContent = '';
+  d.showModal();
+});
+</script>{{end}}

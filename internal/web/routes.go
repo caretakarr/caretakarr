@@ -124,7 +124,46 @@ type routeForm struct {
 	DeleteConfirm string
 	Docker        dockerPanel
 	GateACL       string // textarea content for an existing ACL
-	MailOK        bool   // email delivery configured; the gate section is shown only then
+	MailOK        bool   // email delivery works; the gate controls are active
+	Host          string
+	DomainName    string
+	DNS           store.DNSRecord
+	OwnsRecord    bool
+	Upstream      string // up | down
+	Cert          probe.CertStatus
+	CertSoon      bool
+}
+
+// routeContext fills the form's context header: host, DNS record, certificate and backend
+// reachability — the same chips a dashboard row shows.
+func (s *Server) routeContext(r *http.Request, rt store.Route, ds []store.Domain) routeForm {
+	f := routeForm{Route: rt, Edit: true, Domains: ds}
+	for _, d := range ds {
+		if d.ID == rt.DomainID {
+			f.DomainName = d.Name
+			break
+		}
+	}
+	f.Host = rt.Subdomain + "." + f.DomainName
+	if d, err := s.deps.Store.GetDNS(r.Context(), rt.ID); err == nil {
+		f.DNS = d
+		f.OwnsRecord = d.Owned && d.CFRecordID != ""
+	}
+	if f.DNS.State == "" { // no row on record yet: the dashboard's pending chip
+		f.DNS.State = "pending"
+	}
+	if s.deps.Probe != nil && rt.Enabled {
+		if u, known := s.deps.Probe.Upstream(rt); known {
+			f.Upstream = map[bool]string{true: "up", false: "down"}[u.Up]
+		} else {
+			ctx, cancel := detached(r)
+			f.Upstream = map[bool]string{true: "up", false: "down"}[s.deps.Probe.Check(ctx, rt).Up]
+			cancel()
+		}
+		f.Cert = s.deps.Probe.Cert(r.Context(), f.Host)
+		f.CertSoon = certExpiringSoon(f.Cert, time.Now())
+	}
+	return f
 }
 
 // deleteConfirm tells the user exactly what deleting the route does to its A record.
@@ -161,6 +200,10 @@ func (s *Server) routeFormPage(w http.ResponseWriter, r *http.Request, rt store.
 	form := routeForm{Route: rt, Edit: edit, Domains: ds, Presets: presets.All, DeleteConfirm: confirm,
 		MailOK: mail && s.deps.Cfg.SecretKey != ""}
 	if edit {
+		form = s.routeContext(r, rt, ds)
+		form.Presets = presets.All
+		form.DeleteConfirm = confirm
+		form.MailOK = mail && s.deps.Cfg.SecretKey != ""
 		if gs, err := s.deps.Store.Grants(r.Context(), rt.ID); err == nil {
 			form.GateACL = gateACLText(gs)
 		}
@@ -310,8 +353,12 @@ func (s *Server) updateRoute(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.reconcile(r, id)
-	w.Header().Set("HX-Redirect", "/")
-	w.WriteHeader(http.StatusNoContent)
+	// Deliberate exception to "mutating handlers answer 204 + HX-Redirect" (same family as the
+	// TOTP confirm case): stay on the Edit page with an inline confirmation. Quick tweaks beat
+	// round-trips; the form targets #msg, so a status fragment lands there.
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = fmt.Fprint(w, `<div role="status">Saved and applied. The change is live; Caddy validated it before acceptance, so nothing was torn down.</div>`)
 }
 
 func (s *Server) deleteRoute(w http.ResponseWriter, r *http.Request) {
