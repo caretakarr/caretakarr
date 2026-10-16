@@ -7,7 +7,16 @@ const UI = '127.0.0.1:28081';
 export default defineConfig({
   testDir: './tests',
   workers: 1,
-  use: { baseURL: `http://${UI}`, launchOptions: { args: ['--host-resolver-rules=MAP *.gate.example.test 127.0.0.1'] } },
+  use: {
+    baseURL: `http://${UI}`,
+    // Env proxies (HTTPS_PROXY/HTTP_PROXY in CI runners and sandboxes) are picked up by
+    // Playwright and handed to Chromium per browser context via CDP — launch flags like
+    // --no-proxy-server and the context option proxy: { server: 'direct://' } do NOT
+    // override them there (both verified failing). A context proxy with bypass '**'
+    // replaces the env proxy: every host bypasses and the browser connects directly.
+    proxy: { server: 'http://127.0.0.1:9', bypass: '**' },
+    launchOptions: { args: ['--host-resolver-rules=MAP *.gate.example.test 127.0.0.1'] },
+  },
   webServer: [
     {
       command: 'bun cf-mock.ts',
