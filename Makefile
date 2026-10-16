@@ -6,6 +6,7 @@ PKGS = ./cmd/... ./internal/...
 test:
 	go test -race $(PKGS)
 
+# lint needs golangci-lint v1.64.8 (the .golangci.yml is a v1 config); a v2 binary rejects it.
 lint:
 	@test -z "$$(gofmt -l cmd internal)" || { gofmt -l cmd internal; exit 1; }
 	golangci-lint run $(PKGS)

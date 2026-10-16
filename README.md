@@ -106,7 +106,7 @@ A route can't use the hostname of `CARETAKARR_HOST`, since the UI route always w
 
 ```sh
 make test    # go test -race ./...
-make lint    # gofmt + golangci-lint
+make lint    # gofmt + golangci-lint (v1.64.8: GOTOOLCHAIN=go1.26.0 go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8)
 make e2e     # Playwright against the built binary (bun + chromium)
 make check   # all of the above
 make build   # static binary in bin/
