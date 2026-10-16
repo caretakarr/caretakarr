@@ -142,6 +142,7 @@ func (s *Server) Handler() http.Handler {
 type page struct {
 	Title      string
 	Open       bool // no ADMIN_PASSWORD: UI is unauthenticated
+	Bare       bool // sign-in pages: brand only, no app navigation
 	StartupErr string
 	CFErr      string
 	Flash      []string
@@ -151,6 +152,7 @@ type page struct {
 
 func (s *Server) render(w http.ResponseWriter, name string, status int, p page) {
 	p.Open = !s.auth.enabled()
+	p.Bare = name == "login" || name == "login_totp"
 	p.LoggedIn = s.auth.enabled()
 	p.Flash = s.takeFlashes()
 	if s.startupErr != nil {

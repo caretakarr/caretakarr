@@ -16,7 +16,7 @@
 <header class="topbar">
 <nav>
 <ul><li><a class="brand" href="/" aria-label="Caretakarr dashboard"><img src="/static/caretakarr-mark.svg" alt="" width="28" height="32"><span class="wordmark">Care<b>takarr</b></span></a></li></ul>
-<ul><li><a href="/">Dashboard</a></li><li><a href="/sites/new">Add site</a></li><li><a href="/domains">Domains</a></li><li><a href="/settings">Settings</a></li><li><a href="/logs">Logs</a></li><li><a href="/help">Help</a></li>{{if .LoggedIn}}<li><a href="/security">Security</a></li><li><button class="outline secondary" hx-post="/logout">Sign out</button></li>{{end}}</ul>
+{{if not .Bare}}<ul><li><a href="/">Dashboard</a></li><li><a href="/sites/new">Add site</a></li><li><a href="/domains">Domains</a></li><li><a href="/settings">Settings</a></li><li><a href="/logs">Logs</a></li><li><a href="/help">Help</a></li>{{if .LoggedIn}}<li><a href="/security">Security</a></li><li><button class="outline secondary" hx-post="/logout">Sign out</button></li>{{end}}</ul>{{end}}
 </nav>
 </header>
 <main class="container">

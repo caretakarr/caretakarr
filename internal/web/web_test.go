@@ -23,6 +23,20 @@ func newServer(t *testing.T, password string) *Server {
 	return New(Deps{Cfg: config.Config{AdminPassword: password}, Store: st})
 }
 
+// The login page shows no app navigation: the visitor is signed out.
+func TestLoginPageIsBare(t *testing.T) {
+	s := newServer(t, "secret")
+	body := s.do(req{path: "/login"}).Body.String()
+	if !strings.Contains(body, `name="password"`) {
+		t.Fatalf("not the login form: %s", body)
+	}
+	for _, leak := range []string{"Sign out", `href="/domains"`, `href="/logs"`, `href="/security"`, `href="/sites/new"`} {
+		if strings.Contains(body, leak) {
+			t.Errorf("login page shows signed-out visitor %q", leak)
+		}
+	}
+}
+
 type req struct {
 	method, path, body string
 	peer               string
